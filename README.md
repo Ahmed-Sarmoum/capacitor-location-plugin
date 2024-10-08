@@ -23,12 +23,12 @@ npx cap sync
 ### isLocationEnabled(...)
 
 ```typescript
-isLocationEnabled(options: { enabled: string; }) => any
+isLocationEnabled(options?: any) => any
 ```
 
-| Param         | Type                              |
-| ------------- | --------------------------------- |
-| **`options`** | <code>{ enabled: string; }</code> |
+| Param         | Type             |
+| ------------- | ---------------- |
+| **`options`** | <code>any</code> |
 
 **Returns:** <code>any</code>
 
