@@ -35,7 +35,7 @@ async function checkLocationEnabled() {
 checkLocationEnabled();
 ```
 
-### 4. API
+### 3. API
 #### isLocationEnabled()
 This method checks whether location services are enabled on the device.
 
