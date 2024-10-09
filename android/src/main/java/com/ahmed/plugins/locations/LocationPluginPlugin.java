@@ -11,7 +11,7 @@ import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
 
 @CapacitorPlugin(name = "LocationPlugin")
-public class LocationPlugin extends Plugin {
+public class LocationPluginPlugin extends Plugin {
 
     @PluginMethod
     public void isLocationEnabled(PluginCall call) {

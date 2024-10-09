@@ -1,8 +1,8 @@
 import { registerPlugin } from '@capacitor/core';
 
-import type { LocationPlugin } from './definitions';
+import type { LocationPluginPlugin } from './definitions';
 
-const LocationPlugin = registerPlugin<LocationPlugin>('LocationPlugin', {
+const LocationPlugin = registerPlugin<LocationPluginPlugin>('LocationPlugin', {
   web: () => import('./web').then((m) => new m.LocationPluginWeb()),
 });
 
