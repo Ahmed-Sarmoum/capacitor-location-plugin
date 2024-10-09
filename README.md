@@ -1,11 +1,11 @@
-# capacitor-plugin-location
+# capacitor-location-plugin
 
 Capacitor location enable plugin
 
 ## Install
 
 ```bash
-npm install capacitor-plugin-location
+npm install capacitor-location-plugin
 npx cap sync
 ```
 

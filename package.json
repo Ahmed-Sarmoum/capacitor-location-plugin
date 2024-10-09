@@ -1,5 +1,5 @@
 {
-  "name": "capacitor-plugin-location",
+  "name": "capacitor-location-plugin",
   "version": "0.0.1",
   "description": "Capacitor location enable plugin",
   "main": "dist/plugin.cjs.js",
@@ -19,7 +19,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Ahmed-Sarmoum/capacitor-location-plugin.git.git"
+    "url": "git+https://github.com/Ahmed-Sarmoum/capacitor-location-plugin.git"
   },
   "bugs": {
     "url": "https://github.com/Ahmed-Sarmoum/capacitor-location-plugin.git/issues"
