@@ -1,6 +1,6 @@
 {
   "name": "capacitor-location-plugin",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Capacitor plugin to check if location is enabled",
   "main": "dist/plugin.cjs.js",
   "module": "dist/esm/index.js",
@@ -39,7 +39,7 @@
     "eslint": "eslint . --ext ts",
     "prettier": "prettier \"**/*.{css,html,ts,js,java}\" --plugin=prettier-plugin-java",
     "swiftlint": "node-swiftlint",
-    "docgen": "docgen --api LocationPlugin --output-readme README.md --output-json dist/docs.json",
+    "docgen": "docgen --api LocationPluginPlugin --output-readme README.md --output-json dist/docs.json",
     "build": "npm run clean && npm run docgen && tsc && rollup -c rollup.config.js",
     "clean": "rimraf ./dist",
     "watch": "tsc --watch",
