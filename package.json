@@ -1,7 +1,7 @@
 {
   "name": "capacitor-location-plugin",
   "version": "0.0.1",
-  "description": "Capacitor location enable plugin",
+  "description": "Capacitor plugin to check if location is enabled",
   "main": "dist/plugin.cjs.js",
   "module": "dist/esm/index.js",
   "types": "dist/esm/index.d.ts",

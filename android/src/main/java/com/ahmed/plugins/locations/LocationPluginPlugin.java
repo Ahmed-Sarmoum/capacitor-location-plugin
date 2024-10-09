@@ -11,7 +11,7 @@ import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
 
 @CapacitorPlugin(name = "LocationPlugin")
-public class LocationPluginPlugin extends Plugin {
+public class LocationPlugin extends Plugin {
 
     @PluginMethod
     public void isLocationEnabled(PluginCall call) {
@@ -22,7 +22,7 @@ public class LocationPluginPlugin extends Plugin {
         boolean isNetworkEnabled = locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER);
         
         JSObject ret = new JSObject();
-        ret.put("enabled", isGpsEnabled || isNetworkEnabled);
+        ret.put("isEnabled", isGpsEnabled || isNetworkEnabled);
         call.resolve(ret);
     }
 }

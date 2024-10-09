@@ -1,3 +1,3 @@
-export interface LocationPluginPlugin {
-  isLocationEnabled(options?: any): Promise<{ enabled: boolean }>;
+export interface LocationPlugin {
+  isLocationEnabled(options?: any): Promise<{ isEnabled: boolean }>;
 }
