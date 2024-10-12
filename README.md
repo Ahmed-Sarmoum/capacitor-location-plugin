@@ -5,7 +5,7 @@ A Capacitor plugin that enables checking if location services are enabled on the
 ## Features
 - Check if location services (GPS, etc.) are enabled
 - Easy integration with Capacitor projects
-- Currently support only Android (IOS in the next version)
+- Support both Android and IOS
 
 ## Getting Started
 
