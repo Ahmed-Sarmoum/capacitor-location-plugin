@@ -1,90 +1,84 @@
 import Foundation
 import Capacitor
 import CoreLocation
-import UserNotifications
 
-@objc(LocationPlugin)
-public class LocationPlugin: CAPPlugin {
-    private var locationManager = CLLocationManager()
-
-    override public func load() {
-        super.load()
-        locationManager.delegate = self
-
-        // Request permission for notifications
-        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { granted, error in
-            if let error = error {
-                print("Notification permission error: \(error.localizedDescription)")
-            }
+@objc(LocationPluginPlugin)
+public class LocationPluginPlugin: CAPPlugin, CLLocationManagerDelegate {
+    
+    private var locationManager: CLLocationManager?
+    private var lastIsEnabled = false
+    
+    @objc func initialize(_ call: CAPPluginCall) {
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+            
+            // Initialize location manager
+            self.locationManager = CLLocationManager()
+            self.locationManager?.delegate = self
+            
+            // Check initial status
+            self.updateLocationStatus(shouldNotify: false)
+            
+            call.resolve([
+                "isEnabled": self.lastIsEnabled
+            ])
+            
+            print("Location initialized: \(self.lastIsEnabled)")
         }
     }
-
-    @objc func isLocationEnabled(_ call: CAPPluginCall) {
-        // Ensure location services are enabled
-        guard CLLocationManager.locationServicesEnabled() else {
-            call.resolve(["isEnabled": false])
-            return
-        }
-
-        let status = CLLocationManager.authorizationStatus()
-        let isEnabled = (status == .authorizedWhenInUse || status == .authorizedAlways)
-
-        let result = ["isEnabled": isEnabled]
-        call.resolve(result)
-
-        // Request authorization if not already enabled
-        if !isEnabled {
-            locationManager.requestWhenInUseAuthorization()
+    
+    @objc func isEnabled(_ call: CAPPluginCall) {
+        call.resolve([
+            "isEnabled": lastIsEnabled
+        ])
+    }
+    
+    private func updateLocationStatus(shouldNotify: Bool) {
+        let authStatus: CLAuthorizationStatus
+        
+        if #available(iOS 14.0, *) {
+            authStatus = locationManager?.authorizationStatus ?? .notDetermined
         } else {
-            // Only start updating if authorization is granted
-            locationManager.startUpdatingLocation()
-        }
-    }
-
-    public func locationManager(_ manager: CLLocationManager, didChangeAuthorization status: CLAuthorizationStatus) {
-        var isEnabled = false
-        
-        switch status {
-        case .authorizedWhenInUse, .authorizedAlways:
-            isEnabled = true
-            locationManager.startUpdatingLocation() // Start updating if authorized
-        case .denied, .restricted:
-            locationManager.stopUpdatingLocation() // Stop if not authorized
-            showLocationAccessDeniedNotification() // Notify user
-        default:
-            break
+            authStatus = CLLocationManager.authorizationStatus()
         }
         
-        let result = ["isEnabled": isEnabled]
-        notifyListeners("locationStatusChanged", data: result)
-    }
-
-    private func showLocationAccessDeniedNotification() {
-        let content = UNMutableNotificationContent()
-        content.title = "Location Access Denied"
-        content.body = "Please enable location access in the settings to use location features."
-        content.sound = UNNotificationSound.default
-
-        let request = UNNotificationRequest(identifier: "locationAccessDenied", content: content, trigger: nil)
-        UNUserNotificationCenter.current().add(request) { error in
-            if let error = error {
-                print("Error displaying notification: \(error.localizedDescription)")
+        // Check if location services are enabled globally and authorized for this app
+        let isServicesEnabled = CLLocationManager.locationServicesEnabled()
+        let isAuthorized = (authStatus == .authorizedWhenInUse || authStatus == .authorizedAlways)
+        let newStatus = isServicesEnabled && isAuthorized
+        
+        // Only notify if status actually changed
+        if newStatus != lastIsEnabled {
+            lastIsEnabled = newStatus
+            
+            if shouldNotify {
+                print("LocationPlugin: Status changed to: \(lastIsEnabled)")
+                notifyListeners("locationStatusChanged", data: [
+                    "isEnabled": lastIsEnabled
+                ])
+            }
+        } else {
+            // Status didn't change, just update the cache silently
+            lastIsEnabled = newStatus
+            if shouldNotify {
+                print("LocationPlugin: Status unchanged: \(lastIsEnabled)")
             }
         }
     }
-}
-
-// CLLocationManagerDelegate
-extension LocationPlugin: CLLocationManagerDelegate {
-    public func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
-        if let location = locations.last {
-            let result = ["latitude": location.coordinate.latitude, "longitude": location.coordinate.longitude]
-            notifyListeners("locationUpdated", data: result)
-        }
+    
+    // MARK: - CLLocationManagerDelegate
+    
+    public func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
+        updateLocationStatus(shouldNotify: true)
     }
-
-    public func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
-        // Handle location errors gracefully
-        print("Location update failed with error: \(error.localizedDescription)")
+    
+    // For iOS 13 and earlier
+    public func locationManager(_ manager: CLLocationManager, didChangeAuthorization status: CLAuthorizationStatus) {
+        updateLocationStatus(shouldNotify: true)
+    }
+    
+    deinit {
+        locationManager?.delegate = nil
+        locationManager = nil
     }
 }
