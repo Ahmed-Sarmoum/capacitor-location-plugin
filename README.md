@@ -1,60 +1,60 @@
 # Capacitor Location Plugin
 
-A Capacitor plugin that enables checking if location services are enabled on the user's device.
+A Capacitor plugin that allows you to check whether location services (GPS, network, etc.) are enabled on the device, and listen in real-time for changes to the location services state.
 
 ## Features
-- Check if location services (GPS, etc.) are enabled
-- Easy integration with Capacitor projects
-- Support both Android and IOS
 
-## Getting Started
+- Check if location services are enabled (`isEnabled`)
+- Listen for changes to location services (`locationStatusChanged` event)
+- Lightweight implementation (no continuous location updates, uses system broadcasts)
+- Works on **Android** and **iOS** (iOS support requires CLLocation permissions)
 
-### 1. Install the Plugin
+---
 
-To install the plugin, use npm or yarn:
+## Installation
 
 ```bash
 npm install capacitor-location-plugin
 npx cap sync
 ```
-### 2. Usage (Example with Vue3)
-After installation, you can use the plugin as follows to check if location services are enabled:
+
+---
+
+## Usage
+
+### Example with Vue 3
+
 ```ts
 import { Plugins } from '@capacitor/core';
 const { LocationPlugin } = Plugins;
 
 async function checkLocationEnabled() {
-  const { isEnabled } = await LocationPlugin.isLocationEnabled();
+  const { isEnabled } = await LocationPlugin.isEnabled();
   if (isEnabled) {
-    console.log('Location is enabled!');
+    console.log('✅ Location is enabled!');
   } else {
-    console.log('Location is disabled!');
+    console.log('❌ Location is disabled!');
   }
 }
-
-checkLocationEnabled();
 ```
 
-#### Listen for GPS Status Changes in Real-Time
-You can listen for changes in the GPS status using the locationStatusChanged event:
+---
+
+### Listen for Location Status Changes
+
+You can subscribe to `locationStatusChanged` to get notified whenever the user enables or disables GPS/location services:
 
 ```ts
 import { ref, onMounted, onBeforeUnmount } from 'vue';
 import { Plugins } from '@capacitor/core';
 const { LocationPlugin } = Plugins;
 
-
 const isLocationEnabled = ref(false);
-let locationListener: any;
+let listener: any;
 
-async function checkLocationEnabled() {
-  const { isEnabled } = await LocationPlugin.isLocationEnabled();
+async function checkLocation() {
+  const { isEnabled } = await LocationPlugin.isEnabled();
   isLocationEnabled.value = isEnabled;
-  if (isEnabled) {
-    console.log('Location is enabled!');
-  } else {
-    console.log('Location is disabled!');
-  }
 }
 
 const onLocationStatusChanged = (status: { isEnabled: boolean }) => {
@@ -62,37 +62,61 @@ const onLocationStatusChanged = (status: { isEnabled: boolean }) => {
 };
 
 onMounted(() => {
-  // Check initial location status
-  checkLocationEnabled();
+  // Initial check
+  checkLocation();
 
-  // Listen for location status changes and store the listener reference
-  locationListener = LocationPlugin.addListener('locationStatusChanged', onLocationStatusChanged);
+  // Start listening
+  listener = LocationPlugin.addListener('locationStatusChanged', onLocationStatusChanged);
 });
 
 onBeforeUnmount(() => {
-  // Clean up event listener when component is destroyed
-  LocationPlugin.remove();
+  // Clean up listener
+  if (listener) listener.remove();
 });
-
 ```
 
-### 3. API
-#### isLocationEnabled()
-This method checks whether location services are enabled on the device.
+---
+
+## API
+
+### `isEnabled()`
+
+Checks whether location services are enabled.
 
 ```ts
-isLocationEnabled(options?: any) => Promise<{ isEnabled: boolean }>
+isEnabled() => Promise<{ isEnabled: boolean }>
 ```
+
 #### Returns
-**`Promise<{ isEnabled: boolean }>`**: Resolves with an object containing:
 
-- **`isEnabled`**: <code>boolean</code> - `true` if location services are enabled, otherwise `false`.
+- **`isEnabled`**: `boolean` → `true` if location services are enabled, `false` otherwise.
 
+---
 
+## Android Setup
 
-<!-- ### Breakdown of the README Syntax:
-1. **Installation Instructions** are provided under the "Install" section with proper code blocks for terminal commands.
-2. **iOS and Android Setup** is detailed with code snippets for `Info.plist` and `AndroidManifest.xml`.
-3. **Usage** provides an example of how to use the plugin in a Capacitor app.
-4. **API Documentation** for `isLocationEnabled` includes a code block for its signature and a table explaining its parameters and return value.
-5. **License** section indicates the type of license used for the plugin. -->
+Add the following permission to your **`AndroidManifest.xml`**:
+
+```xml
+<uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+<uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+```
+
+---
+
+## iOS Setup
+
+In **`Info.plist`**, add usage descriptions:
+
+```xml
+<key>NSLocationWhenInUseUsageDescription</key>
+<string>This app requires access to your location while using the app.</string>
+<key>NSLocationAlwaysUsageDescription</key>
+<string>This app requires access to your location even when running in the background.</string>
+```
+
+---
+
+## License
+
+MIT
