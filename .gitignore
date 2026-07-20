@@ -13,6 +13,7 @@ xcuserdata
 xcuserdata/
 DerivedData/
 .swiftpm/configuration/registries.json
+pnpm-workspace.yaml
 .swiftpm/xcode/package.xcworkspace/contents.xcworkspacedata
 .netrc
 
