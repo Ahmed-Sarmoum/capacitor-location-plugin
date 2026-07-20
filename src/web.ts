@@ -12,4 +12,12 @@ export class LocationPluginWeb extends WebPlugin implements LocationPluginPlugin
   async isEnabled(): Promise<{ isEnabled: boolean }> {
     return { isEnabled: false };
   }
+
+  async checkMock(): Promise<{ isMock: boolean; available: boolean }> {
+    return { isMock: false, available: false };
+  }
+
+  async openDeveloperSettings(): Promise<void> {
+    return;
+  }
 }
