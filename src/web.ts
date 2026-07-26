@@ -3,6 +3,9 @@ import { WebPlugin } from '@capacitor/core';
 import type { LocationPluginPlugin } from './definitions';
 
 export class LocationPluginWeb extends WebPlugin implements LocationPluginPlugin {
+  checkMockLastKnown(): Promise<{ isMock: boolean; available: boolean }> {
+    throw new Error('Method not implemented.');
+  }
   async initialize(): Promise<{ isEnabled: boolean }> {
     console.log('Checking location enabled status...');
     // For the web, you can default to false, or implement actual checks if needed.

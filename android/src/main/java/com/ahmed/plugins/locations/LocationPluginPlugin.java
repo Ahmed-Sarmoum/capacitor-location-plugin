@@ -107,7 +107,37 @@ public class LocationPluginPlugin extends Plugin {
             return;
         }
 
-        requestFusedFix(context, call);
+        // Instant current-state check for the app-wide block: read the fused last
+        // location only, never force a fresh fix (that can hang for seconds when
+        // there is no GPS lock). The fused provider drops the mock flag once the
+        // mock app is off, so the block clears quickly; the lingering fake is
+        // caught by checkMockLastKnown at the activity gate instead.
+        try {
+            LocationServices.getFusedLocationProviderClient(context)
+                .getLastLocation()
+                .addOnSuccessListener(location ->
+                    resolveMock(call, location != null && locationIsMock(location), location != null))
+                .addOnFailureListener(e -> resolveMock(call, false, false));
+        } catch (Throwable t) {
+            resolveMock(call, false, false);
+        }
+    }
+
+    @PluginMethod
+    public void checkMockLastKnown(PluginCall call) {
+        Context context = getContext();
+
+        if (!hasLocationPermission(context)) {
+            resolveMock(call, false, false);
+            return;
+        }
+
+        // Instant deep check for the activity gate: the raw providers keep
+        // isFromMockProvider/isMock=true on their last-known fix even after the
+        // mock app is switched off, so a lingering planted position is still
+        // caught. Reads cached fixes only — never forces a fresh acquisition.
+        LocationManager locationManager = (LocationManager) context.getSystemService(Context.LOCATION_SERVICE);
+        resolveMock(call, lastKnownIsMock(locationManager), true);
     }
 
     private void requestFusedFix(Context context, PluginCall call) {

@@ -24,6 +24,8 @@ export interface LocationPluginPlugin {
    */
   checkMock(): Promise<{ isMock: boolean; available: boolean }>;
 
+  checkMockLastKnown(): Promise<{ isMock: boolean; available: boolean }>;
+
   /**
    * Open the Android developer settings (falls back to the main settings) so the
    * user can turn off the selected mock-location app. No-op on iOS and web.
