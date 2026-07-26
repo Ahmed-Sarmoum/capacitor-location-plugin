@@ -1,7 +1,7 @@
 {
   "name": "capacitor-location-plugin",
-  "version": "1.2.6",
-  "description": "Capacitor plugin to check if location is enabled",
+  "version": "1.2.7",
+  "description": "Capacitor plugin for location-services status (with live change events) and fake / mock GPS (spoofing) detection on Android & iOS, including a deep last-known check that stays positive through a lingering fake fix.",
   "main": "dist/plugin.cjs.js",
   "module": "dist/esm/index.js",
   "types": "dist/esm/index.d.ts",
