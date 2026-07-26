@@ -6,11 +6,13 @@ A Capacitor plugin to check whether location services are enabled, listen for ch
 
 - Check if location services are enabled (`isEnabled`)
 - Listen for location-services changes (`locationStatusChanged` event)
-- **Detect mock / spoofed location** (`checkMock`) — on Android reads the mock flag from the **fused** provider (the source most apps use); on iOS 15+ reads `CLLocation.sourceInformation.isSimulatedBySoftware`. Catches a spoofed position even while the device is stationary
+- **Detect mock / spoofed location** with two complementary checks — both read cached fixes only, so they return **instantly** and never block the UI waiting for a GPS lock:
+  - `checkMock` — **current state** from the fused provider. Reflects an _actively_ running mock app and clears quickly once it is switched off (the fused provider drops the flag). Good for a responsive on/off indicator.
+  - `checkMockLastKnown` — **deep** check across the raw providers' last-known fix. The mock flag survives there even after the spoofing app is switched off, so this stays positive through the **lingering fake** window — until a genuine fix replaces the planted position. Good for gating access "until the real position returns".
 - Open the device settings so the user can disable the mock-location app (`openDeveloperSettings`)
 - Lightweight: the status check uses system broadcasts (no continuous updates)
 
-> **Mock detection support:** Android, and iOS 15+. On iOS below 15 and on web, `checkMock` resolves `{ isMock: false, available: false }`.
+> **Mock detection support:** Android, and iOS 15+. On iOS below 15 and on web, the mock checks resolve `{ isMock: false, available: false }`.
 
 ---
 
@@ -53,6 +55,10 @@ listener.remove();
 
 ### Detect fake / mock GPS
 
+Pick the check that matches your intent.
+
+**`checkMock` — responsive indicator.** Reflects whether a mock app is running _right now_; clears soon after it is switched off.
+
 ```ts
 const { isMock, available } = await LocationPlugin.checkMock();
 
@@ -62,15 +68,17 @@ if (available && isMock) {
 }
 ```
 
-Poll it on an interval (and re-check on app resume) to react when the user
-enables or disables a spoofing app:
+**`checkMockLastKnown` — block until the real position returns.** Because a spoofing app leaves a planted fix behind, a user can switch it off yet still sit on the fake position for a moment. This check keeps reporting `isMock: true` until a genuine fix overwrites it — so you can hold a blocking screen until the device recovers its real location.
 
 ```ts
+// Poll on an interval (and re-check on app resume) to drive an app-wide block.
 setInterval(async () => {
-  const { isMock, available } = await LocationPlugin.checkMock();
+  const { isMock, available } = await LocationPlugin.checkMockLastKnown();
   if (available) blocked.value = isMock;
 }, 5000);
 ```
+
+> Tip: warn the user that unblocking can take a moment after they switch the mock app off — the device has to acquire a real position before `checkMockLastKnown` clears.
 
 ---
 
@@ -98,14 +106,22 @@ Registers the internal broadcast receiver and returns the current status. Call o
 checkMock() => Promise<{ isMock: boolean; available: boolean }>
 ```
 
-Requests a fresh location and reports whether it is mocked.
+Instant current-state check. Reads only the cached last location — never forces a fresh acquisition.
 
-- **Android**: reads the **fused** provider (`Location.isMock()` on API 31+, `isFromMockProvider()` below), falling back to the `LocationManager` providers if fused is unavailable.
-- **iOS 15+**: requests a one-shot location and reads `CLLocation.sourceInformation.isSimulatedBySoftware`.
+- **Android**: reads the **fused** provider's last location (`Location.isMock()` on API 31+, `isFromMockProvider()` below). The fused provider drops the mock flag shortly after the mock app is switched off, so this reflects the _current_ state.
+- **iOS 15+**: reads `CLLocation.sourceInformation.isSimulatedBySoftware`.
 
-Fields:
+### `checkMockLastKnown()`
 
-- **`isMock`**: `true` when the current position comes from a mock/simulated source.
+```ts
+checkMockLastKnown() => Promise<{ isMock: boolean; available: boolean }>
+```
+
+Instant deep check for a "block until corrected" flow. On **Android** it scans the raw providers' `getLastKnownLocation` and reports mocked if any of them is still flagged — that flag survives on the planted fix even after the mock app is switched off, so a lingering fake is still caught. Reads cached fixes only; no fresh acquisition. On **iOS below 15 and web** resolves `{ isMock: false, available: false }`.
+
+**Shared fields (both mock checks):**
+
+- **`isMock`**: `true` when the position comes from a mock/simulated source.
 - **`available`**: `false` when the check could not run (no location permission, iOS below 15, or web) — treat `isMock` as inconclusive.
 
 Requires location permission granted at runtime (`ACCESS_FINE_LOCATION`/`ACCESS_COARSE_LOCATION` on Android, when-in-use on iOS).
