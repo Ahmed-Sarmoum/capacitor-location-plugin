@@ -1,6 +1,6 @@
 import { WebPlugin } from '@capacitor/core';
 
-import type { LocationPluginPlugin } from './definitions';
+import type { LocationPluginPlugin, VerifiedPosition } from './definitions';
 
 export class LocationPluginWeb extends WebPlugin implements LocationPluginPlugin {
   checkMockLastKnown(): Promise<{ isMock: boolean; available: boolean }> {
@@ -17,6 +17,10 @@ export class LocationPluginWeb extends WebPlugin implements LocationPluginPlugin
   }
 
   async checkMock(): Promise<{ isMock: boolean; available: boolean }> {
+    return { isMock: false, available: false };
+  }
+
+  async getVerifiedPosition(): Promise<VerifiedPosition> {
     return { isMock: false, available: false };
   }
 

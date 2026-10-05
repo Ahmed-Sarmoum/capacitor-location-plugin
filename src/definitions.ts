@@ -55,10 +55,38 @@ export interface LocationPluginPlugin {
   checkMockLastKnown(): Promise<{ isMock: boolean; available: boolean }>;
 
   /**
+   * "Where am I RIGHT NOW, and is it fake?" in one native call.
+   *
+   * Forces a fresh high-accuracy fused fix (no cached position accepted). When
+   * the fused provider is unavailable or returns nothing, falls back to a raw
+   * GPS / network single fix. A lingering mocked last-known raw fix short-circuits
+   * the fallback and is returned with `isMock: true`. Each step waits up to 4 s,
+   * so the call can take up to ~8 s with no GPS lock.
+   *
+   * Android only; resolves `{ isMock: false, available: false }` on web. Not
+   * registered on iOS (rejects as unimplemented).
+   *
+   * @returns `available` — false when there is no location permission or no fix
+   * arrived before the timeout (coordinates are then absent); `isMock` — true when
+   * the returned fix is mocked; `latitude`, `longitude`, `accuracy` (meters),
+   * `time` (epoch ms) — the fix itself.
+   */
+  getVerifiedPosition(): Promise<VerifiedPosition>;
+
+  /**
    * Open the Android developer settings (falls back to the main settings) so the
    * user can turn off the selected mock-location app. No-op on iOS and web.
    */
   openDeveloperSettings(): Promise<void>;
+}
+
+export interface VerifiedPosition {
+  available: boolean;
+  isMock: boolean;
+  latitude?: number;
+  longitude?: number;
+  accuracy?: number;
+  time?: number;
 }
 
 // TypeScript interface for handling the event listener removal

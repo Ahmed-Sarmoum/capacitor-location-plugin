@@ -9,10 +9,11 @@ A Capacitor plugin to check whether location services are enabled, listen for ch
 - **Detect mock / spoofed location** with two complementary checks — both read cached fixes only, so they return **instantly** and never block the UI waiting for a GPS lock:
   - `checkMock` — **current state** from the fused provider. Reflects an _actively_ running mock app and clears quickly once it is switched off (the fused provider drops the flag). Good for a responsive on/off indicator.
   - `checkMockLastKnown` — **deep** check across the raw providers' last-known fix. The mock flag survives there even after the spoofing app is switched off, so this stays positive through the **lingering fake** window — until a genuine fix replaces the planted position. Good for gating access "until the real position returns".
+- **Get a fresh position and its mock flag in one call** (`getVerifiedPosition`, Android only) — forces a new fix (no cached position), so it can take a few seconds. Good for stamping a record (visit, order, check-in) with a trusted position.
 - Open the device settings so the user can disable the mock-location app (`openDeveloperSettings`)
 - Lightweight: the status check uses system broadcasts (no continuous updates)
 
-> **Mock detection support:** Android, and iOS 15+. On iOS below 15 and on web, the mock checks resolve `{ isMock: false, available: false }`.
+> **Mock detection support:** Android, and iOS 15+. On iOS below 15 and on web, the mock checks resolve `{ isMock: false, available: false }`. `getVerifiedPosition` is Android only: it resolves `{ isMock: false, available: false }` on web and is not implemented on iOS (the call rejects).
 
 ---
 
@@ -78,7 +79,26 @@ setInterval(async () => {
 }, 5000);
 ```
 
-> Tip: warn the user that unblocking can take a moment after they switch the mock app off — the device has to acquire a real position before `checkMockLastKnown` clears.
+> **Note:** after the mock app is switched off, the fake fix stays cached and `checkMockLastKnown` / `getVerifiedPosition` keep reporting `isMock: true` until a real GPS fix replaces it. To clear it right away, ask the user to **turn location off and on again**.
+
+### Get a verified position (Android)
+
+Use it when you need the position _and_ proof it is not fake, e.g. when saving a visit or an order.
+
+```ts
+const pos = await LocationPlugin.getVerifiedPosition();
+
+if (!pos.available) {
+  // No permission, or no fix before the timeout — ask the user to retry.
+} else if (pos.isMock) {
+  // The fix is fake — refuse it.
+  await LocationPlugin.openDeveloperSettings();
+} else {
+  save({ lat: pos.latitude, lng: pos.longitude, accuracy: pos.accuracy, time: pos.time });
+}
+```
+
+> It waits for a fresh fix, so show a loader: it can take up to ~8 s with no GPS lock.
 
 ---
 
@@ -125,6 +145,35 @@ Instant deep check for a "block until corrected" flow. On **Android** it scans t
 - **`available`**: `false` when the check could not run (no location permission, iOS below 15, or web) — treat `isMock` as inconclusive.
 
 Requires location permission granted at runtime (`ACCESS_FINE_LOCATION`/`ACCESS_COARSE_LOCATION` on Android, when-in-use on iOS).
+
+### `getVerifiedPosition()`
+
+```ts
+getVerifiedPosition() => Promise<VerifiedPosition>
+
+interface VerifiedPosition {
+  available: boolean;
+  isMock: boolean;
+  latitude?: number;
+  longitude?: number;
+  accuracy?: number; // meters
+  time?: number; // epoch ms
+}
+```
+
+"Where am I right now, and is it fake?" in one native call. **Android only.**
+
+1. Asks the **fused** provider for a fresh high-accuracy fix (no cached position accepted), waiting up to 4 s.
+2. If the fused provider is missing, fails, or returns nothing, it checks the raw providers' last-known fix: a **lingering mocked fix** is returned right away with `isMock: true`.
+3. Otherwise it asks GPS / network for a single fresh fix, waiting up to 4 s more.
+
+So the call can take up to ~8 s when there is no GPS lock.
+
+- **`available`**: `false` when there is no location permission or no fix arrived before the timeout. The coordinates are then absent.
+- **`isMock`**: `true` when the returned fix is mocked.
+- **`latitude`**, **`longitude`**, **`accuracy`**, **`time`**: the fix itself.
+
+On web resolves `{ isMock: false, available: false }`. Not implemented on iOS (the call rejects).
 
 ### `openDeveloperSettings()`
 

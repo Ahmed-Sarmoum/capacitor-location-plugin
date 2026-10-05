@@ -30,6 +30,7 @@ import com.google.android.gms.tasks.CancellationTokenSource;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Consumer;
 
 @CapacitorPlugin(name = "LocationPlugin")
 public class LocationPluginPlugin extends Plugin {
@@ -51,7 +52,6 @@ public class LocationPluginPlugin extends Plugin {
         ret.put("isEnabled", lastIsEnabled);
         call.resolve(ret);
 
-        Log.d("eeeeeeeeeeeee", lastIsEnabled+"");
         // Register BroadcastReceiver to listen for provider changes
         locationReceiver = new BroadcastReceiver() {
             @Override
@@ -137,16 +137,42 @@ public class LocationPluginPlugin extends Plugin {
         // mock app is switched off, so a lingering planted position is still
         // caught. Reads cached fixes only — never forces a fresh acquisition.
         LocationManager locationManager = (LocationManager) context.getSystemService(Context.LOCATION_SERVICE);
-        resolveMock(call, lastKnownIsMock(locationManager), true);
+        resolveMock(call, lastKnownMock(locationManager) != null, true);
     }
 
-    private void requestFusedFix(Context context, PluginCall call) {
+    @PluginMethod
+    public void getVerifiedPosition(PluginCall call) {
+        Context context = getContext();
+
+        if (!hasLocationPermission(context)) {
+            resolveMock(call, false, false);
+            return;
+        }
+
+        requestFusedFix(context, location -> {
+            if (location == null) {
+                resolveMock(call, false, false);
+                return;
+            }
+
+            JSObject ret = new JSObject();
+            ret.put("available", true);
+            ret.put("isMock", locationIsMock(location));
+            ret.put("latitude", location.getLatitude());
+            ret.put("longitude", location.getLongitude());
+            ret.put("accuracy", location.getAccuracy());
+            ret.put("time", location.getTime());
+            call.resolve(ret);
+        });
+    }
+
+    private void requestFusedFix(Context context, Consumer<Location> onFix) {
         FusedLocationProviderClient fused;
 
         try {
             fused = LocationServices.getFusedLocationProviderClient(context);
         } catch (Throwable t) {
-            fallbackToLocationManager(context, call);
+            fallbackToLocationManager(context, onFix);
             return;
         }
 
@@ -161,26 +187,27 @@ public class LocationPluginPlugin extends Plugin {
                 .getCurrentLocation(request, new CancellationTokenSource().getToken())
                 .addOnSuccessListener(location -> {
                     if (location != null) {
-                        resolveMock(call, locationIsMock(location), true);
+                        onFix.accept(location);
                     } else {
-                        fallbackToLocationManager(context, call);
+                        fallbackToLocationManager(context, onFix);
                     }
                 })
-                .addOnFailureListener(e -> fallbackToLocationManager(context, call));
+                .addOnFailureListener(e -> fallbackToLocationManager(context, onFix));
         } catch (SecurityException e) {
-            fallbackToLocationManager(context, call);
+            fallbackToLocationManager(context, onFix);
         }
     }
 
-    private void fallbackToLocationManager(Context context, PluginCall call) {
+    private void fallbackToLocationManager(Context context, Consumer<Location> onFix) {
         LocationManager locationManager = (LocationManager) context.getSystemService(Context.LOCATION_SERVICE);
 
-        if (lastKnownIsMock(locationManager)) {
-            resolveMock(call, true, true);
+        Location lingeringMock = lastKnownMock(locationManager);
+        if (lingeringMock != null) {
+            onFix.accept(lingeringMock);
             return;
         }
 
-        requestSingleFix(locationManager, call);
+        requestSingleFix(locationManager, onFix);
     }
 
     @PluginMethod
@@ -214,24 +241,25 @@ public class LocationPluginPlugin extends Plugin {
         return location.isFromMockProvider();
     }
 
-    private boolean lastKnownIsMock(LocationManager locationManager) {
+    private Location lastKnownMock(LocationManager locationManager) {
         for (String provider : locationManager.getAllProviders()) {
             try {
-                if (locationIsMock(locationManager.getLastKnownLocation(provider))) return true;
+                Location location = locationManager.getLastKnownLocation(provider);
+                if (locationIsMock(location)) return location;
             } catch (SecurityException ignored) {
                 // Provider not accessible under current permissions
             }
         }
-        return false;
+        return null;
     }
 
-    private void requestSingleFix(LocationManager locationManager, PluginCall call) {
+    private void requestSingleFix(LocationManager locationManager, Consumer<Location> onFix) {
         List<String> providers = new ArrayList<>();
         if (locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) providers.add(LocationManager.GPS_PROVIDER);
         if (locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER)) providers.add(LocationManager.NETWORK_PROVIDER);
 
         if (providers.isEmpty()) {
-            resolveMock(call, false, true);
+            onFix.accept(null);
             return;
         }
 
@@ -252,7 +280,7 @@ public class LocationPluginPlugin extends Plugin {
             if (settled[0]) return;
             settled[0] = true;
             cleanup.run();
-            resolveMock(call, false, true);
+            onFix.accept(null);
         };
 
         for (String provider : providers) {
@@ -263,7 +291,7 @@ public class LocationPluginPlugin extends Plugin {
                     settled[0] = true;
                     handler.removeCallbacks(timeout);
                     cleanup.run();
-                    resolveMock(call, locationIsMock(location), true);
+                    onFix.accept(location);
                 }
 
                 @Override
